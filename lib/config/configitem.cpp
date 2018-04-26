@@ -185,6 +185,9 @@ ConfigObject::Ptr ConfigItem::Commit(bool discard)
 	if (!type || !ConfigObject::TypeInstance->IsAssignableFrom(type))
 		BOOST_THROW_EXCEPTION(ScriptError("Type '" + type->GetName() + "' does not exist.", m_DebugInfo));
 
+	Log(LogCritical, "DEBUG")
+		<< "HELLO, MY TYPE IS " << type->GetName();
+
 	if (IsAbstract())
 		return nullptr;
 
@@ -602,18 +605,32 @@ bool ConfigItem::ActivateItems(WorkQueue& upq, const std::vector<ConfigItem::Ptr
 	if (!silent)
 		Log(LogInformation, "ConfigItem", "Triggering Start signal for config items");
 
-	for (const ConfigItem::Ptr& item : newItems) {
-		if (!item->m_Object)
-			continue;
+	std::vector<Type::Ptr> types = Type::GetAllTypes();
+	std::sort(types.begin(), types.end(), [](const Type::Ptr& a, const Type::Ptr& b) {
+		if (a->GetActivationPriority() < b->GetActivationPriority())
+			return true;
+		return false;
+	});
 
-		ConfigObject::Ptr object = item->m_Object;
+	for (const Type::Ptr& type : types) {
+		for (const ConfigItem::Ptr& item : newItems) {
+			if (!item->m_Object)
+				continue;
+
+			ConfigObject::Ptr object = item->m_Object;
+
+			if (object->GetReflectionType() != type)
+				continue;
 
 #ifdef I2_DEBUG
-		Log(LogDebug, "ConfigItem")
-			<< "Activating object '" << object->GetName() << "' of type '" << object->GetReflectionType()->GetName() << "'";
+			Log(LogDebug, "ConfigItem")
+				<< "Activating object '" << object->GetName() << "' of type '" << object->GetReflectionType()->GetName() << "'";
 #endif /* I2_DEBUG */
 
-		object->Activate(runtimeCreated);
+			object->Activate(runtimeCreated);
+			Log(LogCritical, "DEBUG")
+				<< "TYPE: " << object->GetReflectionType()->GetName() << " P: " << object->GetReflectionType()->GetActivationPriority();
+		}
 	}
 
 	upq.Join();

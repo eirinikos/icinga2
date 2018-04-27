@@ -612,6 +612,8 @@ bool ConfigItem::ActivateItems(WorkQueue& upq, const std::vector<ConfigItem::Ptr
 		return false;
 	});
 
+	bool wait = true;
+
 	for (const Type::Ptr& type : types) {
 		for (const ConfigItem::Ptr& item : newItems) {
 			if (!item->m_Object)
@@ -621,6 +623,13 @@ bool ConfigItem::ActivateItems(WorkQueue& upq, const std::vector<ConfigItem::Ptr
 
 			if (object->GetReflectionType() != type)
 				continue;
+			
+			if (wait && type->GetName() == "Downtime") {
+				Log(LogCritical, "DEBUG")
+					<< "WAITING BEFORE ACTIVATING DOWNTIMES";
+				Utility::Sleep(8);
+				wait = false;
+			}
 
 #ifdef I2_DEBUG
 			Log(LogDebug, "ConfigItem")
